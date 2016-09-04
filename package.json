@@ -1,6 +1,7 @@
 {
     "author": "eu@leao.me",
     "dependencies": {
+        "pebble-clay": "^1.0.2",
         "pebble-events": "^1.1.0"
     },
     "keywords": [],
@@ -8,6 +9,7 @@
     "pebble": {
         "capabilities": [
             "location",
+            "configurable",
             "health"
         ],
         "displayName": "AllThatInfo",
@@ -18,11 +20,25 @@
             "WEATHER_COND",
             "WEATHER_CITY",
             "WEATHER_REQUEST",
-            "WEATHER_REPLY"
+            "WEATHER_REPLY",
+            "WEATHER_APIKEY"
         ],
         "projectType": "native",
         "resources": {
-            "media": []
+            "media": [
+                {
+                    "file": "images/sunset.png",
+                    "name": "SUNSET",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/sunrise.png",
+                    "name": "SUNRISE",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                }
+            ]
         },
         "sdkVersion": "3",
         "targetPlatforms": [
