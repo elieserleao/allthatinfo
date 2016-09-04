@@ -1,2 +1,2 @@
-# alltheinfo
-All the Info Pebble Watchface.
+# allthatinfo
+All That Info Pebble Watchface.
