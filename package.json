@@ -1,0 +1,40 @@
+{
+    "author": "eu@leao.me",
+    "dependencies": {
+        "pebble-events": "^1.1.0"
+    },
+    "keywords": [],
+    "name": "allthatinfo",
+    "pebble": {
+        "capabilities": [
+            "location",
+            "health"
+        ],
+        "displayName": "AllThatInfo",
+        "enableMultiJS": true,
+        "messageKeys": [
+            "WEATHER_TEMP",
+            "WEATHER_SUN",
+            "WEATHER_COND",
+            "WEATHER_CITY",
+            "WEATHER_REQUEST",
+            "WEATHER_REPLY"
+        ],
+        "projectType": "native",
+        "resources": {
+            "media": []
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt",
+            "chalk",
+            "diorite"
+        ],
+        "uuid": "7489475b-be13-434a-915c-cb2f5feca706",
+        "watchapp": {
+            "watchface": true
+        }
+    },
+    "version": "1.0.0"
+}
