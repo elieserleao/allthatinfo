@@ -191,8 +191,11 @@ static void handle_minute_tick(struct tm* tick_time, TimeUnits units_changed) {
   text_layer_set_text(s_time_layer, s_time_text);
   text_layer_set_text(s_date_layer, s_finaldate_text);
   
-  if(tick_time->tm_min % 15 == 0){
+  if(tick_time->tm_min % 5 == 0){
     refresh_steps();
+  }
+  
+  if(tick_time->tm_min % 15 == 0){
     request_weather(NULL);
   }
   

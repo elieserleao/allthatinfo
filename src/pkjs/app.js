@@ -17,9 +17,9 @@ var locationOptions = {
 Pebble.addEventListener('appmessage', function (e) {
   var dict = e.payload;
   
-  if (dict['WEATHER_REQUEST']){
+//  if (dict['WEATHER_REQUEST']){
     wunderKey = dict['WEATHER_REQUEST'];
-  }
+//  }
 
   navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
   
@@ -157,10 +157,10 @@ function request_weather_owm(latitude, longitude){
 function fetchWeather(latitude, longitude) {  
   console.log('lat,lon=' + latitude + ',' + longitude);
   
-  if(wunderKey){
-    request_weather_wunder(latitude, longitude);
-  }else{
+  if(!wunderKey) {
     request_weather_owm(latitude, longitude);
+  }else{
+    request_weather_wunder(latitude, longitude);
   }
 }
 
