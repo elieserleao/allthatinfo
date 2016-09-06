@@ -191,24 +191,20 @@ static void handle_minute_tick(struct tm* tick_time, TimeUnits units_changed) {
   text_layer_set_text(s_time_layer, s_time_text);
   text_layer_set_text(s_date_layer, s_finaldate_text);
   
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "15: %d", tick_time->tm_min % 15);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "tm_hour: %d", tick_time->tm_hour);
-  
   if(tick_time->tm_min % 15 == 0){
     refresh_steps();
     request_weather(NULL);
   }
   
   if(tick_time->tm_min == 0) {
-    request_weather(NULL);
-    refresh_steps();
-    
-    if (tick_time->tm_hour > 8){
+    HealthActivityMask activities = health_service_peek_current_activities();
+
+    if(!(activities & HealthActivitySleep)) {
       VibePattern pat = {
         .durations = vibe_hour,
         .num_segments = ARRAY_LENGTH(vibe_hour),
       };
-      
+  
       vibes_enqueue_custom_pattern(pat);
     }
   }
