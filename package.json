@@ -21,11 +21,64 @@
             "WEATHER_CITY",
             "WEATHER_REQUEST",
             "WEATHER_REPLY",
-            "WEATHER_APIKEY"
+            "WEATHER_APIKEY",
+            "WEATHER_HUM",
+            "WEATHER_WIND",
+            "WEATHER_OWM",
+            "WEATHER_WU"
         ],
         "projectType": "native",
         "resources": {
             "media": [
+                {
+                    "file": "images/noblt.png",
+                    "name": "NOBLT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/att_logo.png",
+                    "menuIcon": true,
+                    "name": "ATT_LOGO",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/owm.png",
+                    "name": "OWM",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/wu.png",
+                    "name": "WU",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/ms.png",
+                    "name": "MS",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/run.png",
+                    "name": "RUN",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/hum.png",
+                    "name": "HUM",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/wind.png",
+                    "name": "WIND",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
                 {
                     "file": "images/sunset.png",
                     "name": "SUNSET",
@@ -52,5 +105,5 @@
             "watchface": true
         }
     },
-    "version": "1.4.0"
+    "version": "1.5.0"
 }
