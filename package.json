@@ -31,45 +31,8 @@
         "resources": {
             "media": [
                 {
-                    "file": "images/noblt.png",
-                    "name": "NOBLT",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/att_logo.png",
-                    "menuIcon": true,
-                    "name": "ATT_LOGO",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/owm.png",
-                    "name": "OWM",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
                     "file": "images/wu.png",
                     "name": "WU",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/ms.png",
-                    "name": "MS",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/run.png",
-                    "name": "RUN",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/hum.png",
-                    "name": "HUM",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 },
@@ -88,6 +51,43 @@
                 {
                     "file": "images/sunrise.png",
                     "name": "SUNRISE",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/run.png",
+                    "name": "RUN",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/owm.png",
+                    "name": "OWM",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/noblt.png",
+                    "name": "NOBLT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/ms.png",
+                    "name": "MS",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/hum.png",
+                    "name": "HUM",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/att_logo.png",
+                    "menuIcon": true,
+                    "name": "ATT_LOGO",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 }

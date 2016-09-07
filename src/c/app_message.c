@@ -1,6 +1,6 @@
 #include <pebble.h>
 #include <pebble-events/pebble-events.h>
-
+//Teste
 static Window *s_main_window;
 static Layer *s_bgtime_layer;
 static Layer *s_batt_layer;
