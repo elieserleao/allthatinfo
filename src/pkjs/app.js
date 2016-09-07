@@ -56,7 +56,13 @@ function request_weather_wunder(latitude, longitude){
 
           if (typeof(response.response.error) == "object"){
             Pebble.sendAppMessage({
-              'WEATHER_REPLY': '1',
+              'WEATHER_REPLY': '1',                  
+              'WEATHER_WU': 1,
+              'WEATHER_TEMP': "0.0",
+              'WEATHER_SUN': "unavailable",
+              'WEATHER_COND': "Not good",
+              'WEATHER_HUM': "0%",
+              'WEATHER_WIND': "0",
               'WEATHER_CITY': response.response.error.description
             });
             
@@ -70,6 +76,10 @@ function request_weather_wunder(latitude, longitude){
                 var astResp = JSON.parse(ast.responseText);
                 console.log(JSON.stringify(astResp));
                 
+                if(!response.current_observation.weather){
+                  response.current_observation.weather = "Clear";
+                }
+                
                 console.log(response.current_observation.temp_c);
                 console.log(astResp.sun_phase.sunrise.hour + ':' + astResp.sun_phase.sunrise.minute + "-" + astResp.sun_phase.sunset.hour + ':' + astResp.sun_phase.sunset.minute);
                 console.log(response.current_observation.weather);
@@ -77,10 +87,13 @@ function request_weather_wunder(latitude, longitude){
 
                 Pebble.sendAppMessage({
                   'WEATHER_REPLY': '1',
-                  'WEATHER_TEMP': String(response.current_observation.temp_c),
+                  'WEATHER_WU': 1,
+                  'WEATHER_TEMP': temp_calc(response.current_observation.temp_c),
                   'WEATHER_SUN': astResp.sun_phase.sunrise.hour + ':' + astResp.sun_phase.sunrise.minute + "-" + astResp.sun_phase.sunset.hour + ':' + astResp.sun_phase.sunset.minute,
                   'WEATHER_COND': response.current_observation.weather,
-                  'WEATHER_CITY': response.current_observation.display_location.city
+                  'WEATHER_CITY': response.current_observation.display_location.city,
+                  'WEATHER_HUM': response.current_observation.relative_humidity,
+                  'WEATHER_WIND': String(Math.round(response.current_observation.wind_kph / 3.6))
                 });
               } else {   
                 Pebble.sendAppMessage({
@@ -140,10 +153,13 @@ function request_weather_owm(latitude, longitude){
         
         Pebble.sendAppMessage({
           'WEATHER_REPLY': '1',
-          'WEATHER_TEMP': String(parseFloat(response.main.temp - 273.15).toFixed(1)),
+          'WEATHER_OWM': 1,
+          'WEATHER_TEMP': temp_calc(parseFloat(response.main.temp - 273.15).toFixed(1)),
           'WEATHER_SUN': srStr + "-" + ssStr,
           'WEATHER_COND': response.weather[0].description,
-          'WEATHER_CITY': response.name
+          'WEATHER_CITY': response.name,
+          'WEATHER_HUM': response.main.humidity + "%",
+          'WEATHER_WIND': String(Math.round(response.wind.speed))
         });
       } else {
         console.log('Error');
@@ -181,6 +197,19 @@ function locationError(err) {
     'WEATHER_CITY': 'Somewhere'
   });
   */
+}
+
+function temp_calc(temp){
+  var sp = String(temp).split(".");
+  var res = sp[0];
+  
+  if(sp.length > 1){
+    if(sp[1] > 5){
+      res++;
+    }
+  }
+  
+  return String(res);
 }
 
 function leftpad(str, len, ch) {
