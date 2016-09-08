@@ -8,9 +8,13 @@ static TextLayer *s_city_layer;
 static TextLayer *s_connection_layer;
 static TextLayer *s_time_layer;
 static TextLayer *s_date_layer;
+static GRect s_temp_grect_2lines;
+static GRect s_temp_grect_1line;
 static TextLayer *s_temp_layer;
 static TextLayer *s_hum_layer;
 static TextLayer *s_wind_layer;
+static GRect s_cond_grect_2lines;
+static GRect s_cond_grect_1line;
 static TextLayer *s_cond_layer;
 static TextLayer *s_sunset_layer;
 static TextLayer *s_steps_layer;
@@ -23,6 +27,9 @@ static GBitmap *s_bitmap_sunrise;
 static BitmapLayer *s_bitmap_sunrise_layer;
 static GBitmap *s_bitmap_sunset;
 static BitmapLayer *s_bitmap_sunset_layer;
+
+static GRect s_wlogo_grect_2lines;
+static GRect s_wlogo_grect_1line;
 
 static GBitmap *s_bitmap_owmlogo;
 static GBitmap *s_bitmap_wulogo;
@@ -44,6 +51,9 @@ static const char *weekday[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 static const uint32_t vibe_hour[] = {100, 100, 100};
 static const uint32_t vibe_connect[] = {50, 100, 50, 100, 50};
 static const uint32_t vibe_disconnect[] = {300, 100, 300, 100, 300};
+
+bool first_time = true;
+int cur_size = 0;
 
 static char apikey[32];
 
@@ -125,6 +135,19 @@ static void request_weather(void *context) {
   }
 }
 
+static void anim_easeout(PropertyAnimation *prop_anim){
+        Animation *anim = property_animation_get_animation(prop_anim);
+        
+        const int delay_ms = 1000;
+        const int duration_ms = 500;
+        
+        animation_set_curve(anim, AnimationCurveEaseOut);
+        animation_set_delay(anim, delay_ms);
+        animation_set_duration(anim, duration_ms);
+
+        animation_schedule(anim);
+}
+
 static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   Tuple *reply_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_REPLY);
   if(reply_tuple) {
@@ -138,6 +161,38 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     if(cond_tuple){
       APP_LOG(APP_LOG_LEVEL_DEBUG, "COND: %s", cond_tuple->value->cstring);
       text_layer_set_text(s_cond_layer, cond_tuple->value->cstring);
+      
+      GSize text_size = graphics_text_layout_get_content_size(cond_tuple->value->cstring, 
+                                                              fonts_get_system_font(FONT_KEY_GOTHIC_18), 
+                                                              s_cond_grect_2lines, GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter);
+      
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "Text H: %d W: %d", text_size.h, text_size.w);
+      
+      if(cur_size != text_size.h){
+        cur_size = text_size.h;
+        
+        PropertyAnimation *prop_anim_temp = NULL, *prop_anim_cond = NULL, *prop_anim_wlogo = NULL;
+        
+        if(text_size.h <= 18){
+          if(!first_time){
+            prop_anim_temp = property_animation_create_layer_frame(text_layer_get_layer(s_temp_layer), &s_temp_grect_2lines, &s_temp_grect_1line);
+            prop_anim_cond = property_animation_create_layer_frame(text_layer_get_layer(s_cond_layer), &s_cond_grect_2lines, &s_cond_grect_1line);          
+            prop_anim_wlogo = property_animation_create_layer_frame(bitmap_layer_get_layer(s_bitmap_wlogo_layer), &s_wlogo_grect_2lines, &s_wlogo_grect_1line);          
+          }
+        }else{          
+          prop_anim_temp = property_animation_create_layer_frame(text_layer_get_layer(s_temp_layer), &s_temp_grect_1line, &s_temp_grect_2lines);
+          prop_anim_cond = property_animation_create_layer_frame(text_layer_get_layer(s_cond_layer), &s_cond_grect_1line, &s_cond_grect_2lines);
+          prop_anim_wlogo = property_animation_create_layer_frame(bitmap_layer_get_layer(s_bitmap_wlogo_layer), &s_wlogo_grect_1line, &s_wlogo_grect_2lines);
+        }
+        
+        if(prop_anim_temp && prop_anim_cond && prop_anim_wlogo){
+          anim_easeout(prop_anim_temp);
+          anim_easeout(prop_anim_cond);
+          anim_easeout(prop_anim_wlogo);
+        }
+        
+        first_time = false;
+      }
     }
   
     Tuple *city_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_CITY);
@@ -319,7 +374,11 @@ static void main_window_load(Window *window) {
   text_layer_set_text_alignment(s_connection_layer, GTextAlignmentRight);
   handle_bluetooth(connection_service_peek_pebble_app_connection());
 
-  s_temp_layer = text_layer_create(GRect(0, bounds.size.h - 80, bounds.size.w - 50, 42));
+//  s_temp_layer = text_layer_create(GRect(0, bounds.size.h - 80, bounds.size.w - 50, 42));
+  s_temp_grect_1line = GRect(0, 104, 94, 44);
+  s_temp_grect_2lines = GRect(0, 88, 94, 44);
+  
+  s_temp_layer = text_layer_create(s_temp_grect_1line);
   text_layer_set_text_color(s_temp_layer, GColorWhite);
   text_layer_set_background_color(s_temp_layer, GColorClear);
   text_layer_set_font(s_temp_layer, fonts_get_system_font(FONT_KEY_LECO_42_NUMBERS));
@@ -340,7 +399,11 @@ static void main_window_load(Window *window) {
   text_layer_set_text_alignment(s_wind_layer, GTextAlignmentRight);
   text_layer_set_text(s_wind_layer, "0");
   
-  s_cond_layer = text_layer_create(GRect(0, bounds.size.h - 40, bounds.size.w - 50, 44));
+  //s_cond_grect = GRect(0, bounds.size.h - 40, bounds.size.w - 50, 44);
+  s_cond_grect_1line = GRect(0, 144, 94, 44);
+  s_cond_grect_2lines = GRect(0, 128, 94, 44);
+
+  s_cond_layer = text_layer_create(s_cond_grect_1line);
   text_layer_set_text_color(s_cond_layer, GColorLightGray);
   text_layer_set_background_color(s_cond_layer, GColorClear);
   text_layer_set_font(s_cond_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
@@ -368,9 +431,12 @@ static void main_window_load(Window *window) {
   s_bitmap_sunset_layer = bitmap_layer_create(GRect(105, 80, 13, 8));
   bitmap_layer_set_bitmap(s_bitmap_sunset_layer, s_bitmap_sunset);
   
+  s_wlogo_grect_1line = GRect(0, bounds.size.h - 46, 13, 20);
+  s_wlogo_grect_2lines = GRect(0, bounds.size.h - 62, 13, 20);
+  
   s_bitmap_owmlogo = gbitmap_create_with_resource(RESOURCE_ID_OWM);
   s_bitmap_wulogo = gbitmap_create_with_resource(RESOURCE_ID_WU);
-  s_bitmap_wlogo_layer = bitmap_layer_create(GRect(0, bounds.size.h - 62, 13, 20));
+  s_bitmap_wlogo_layer = bitmap_layer_create(s_wlogo_grect_1line);
   bitmap_layer_set_bitmap(s_bitmap_wlogo_layer, s_bitmap_owmlogo);
   
   s_bitmap_hum = gbitmap_create_with_resource(RESOURCE_ID_HUM);

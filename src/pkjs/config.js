@@ -17,7 +17,8 @@ module.exports = [
       {
         "type": "input",
         "messageKey": "WEATHER_APIKEY",
-        "label": "Weather Underground API Key"
+        "label": "Weather Underground API Key",
+        "description": "Configure your Weather Underground API key.<br/> Get yours <a href='https://www.wunderground.com/weather/api/'>here</a>.<br/><br/> Leave blank to use OpenWeatherMap."
       }
     ]
   },

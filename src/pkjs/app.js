@@ -157,6 +157,7 @@ function request_weather_owm(latitude, longitude){
           'WEATHER_TEMP': temp_calc(parseFloat(response.main.temp - 273.15).toFixed(1)),
           'WEATHER_SUN': srStr + "-" + ssStr,
           'WEATHER_COND': response.weather[0].description,
+          //'WEATHER_COND': "OW MUCH Great clouds",
           'WEATHER_CITY': response.name,
           'WEATHER_HUM': response.main.humidity + "%",
           'WEATHER_WIND': String(Math.round(response.wind.speed))
