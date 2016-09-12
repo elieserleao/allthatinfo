@@ -25,11 +25,23 @@
             "WEATHER_HUM",
             "WEATHER_WIND",
             "WEATHER_OWM",
-            "WEATHER_WU"
+            "WEATHER_WU",
+            "CLOCK_COLOR",
+            "CLOCK_BGCOLOR",
+            "TIMES_UPDWEATHER",
+            "TIMES_UPDSTEPS",
+            "JS_READY",
+            "WEATHER_ALTITUDE"
         ],
         "projectType": "native",
         "resources": {
             "media": [
+                {
+                    "file": "images/mountain.png",
+                    "name": "MOUNTAIN",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
                 {
                     "file": "images/wu.png",
                     "name": "WU",
@@ -105,5 +117,5 @@
             "watchface": true
         }
     },
-    "version": "1.6.0"
+    "version": "1.7.0"
 }
