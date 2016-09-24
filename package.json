@@ -31,7 +31,11 @@
             "TIMES_UPDWEATHER",
             "TIMES_UPDSTEPS",
             "JS_READY",
-            "WEATHER_ALTITUDE"
+            "WEATHER_ALTITUDE",
+            "WEATHER_UNIT",
+            "HOURLY_VIBRATE",
+            "HOURLY_VIBRATE_START",
+            "HOURLY_VIBRATE_STOP"
         ],
         "projectType": "native",
         "resources": {
@@ -117,5 +121,5 @@
             "watchface": true
         }
     },
-    "version": "1.7.0"
+    "version": "1.8.0"
 }

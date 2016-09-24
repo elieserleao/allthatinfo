@@ -37,6 +37,59 @@ module.exports = [
     "items": [
       {
         "type": "heading",
+        "defaultValue": "Hourly Vibrate"
+      },
+      {
+        "type": "select",
+        "messageKey": "HOURLY_VIBRATE",
+        "defaultValue": "S",
+        "label": "Vibe at",
+        "description": "Enable or disable hourly vibrates",
+        "options": [
+          { 
+            "label": "Always", 
+            "value": "A"
+          },
+          { 
+            "label": "When NOT sleeping", 
+            "value": "S"
+          },
+          { 
+            "label": "User defined", 
+            "value": "U"
+          },
+          { 
+            "label": "Never", 
+            "value": "N"
+          }
+        ]
+      },
+      {
+        "type": "input",
+        "messageKey": "HOURLY_VIBRATE_START",
+        "label": "Start vibe hour",
+        "defaultValue": "08:00",
+        "attributes": {
+          "type": "time"
+        }
+      },
+      {
+        "type": "input",
+        "messageKey": "HOURLY_VIBRATE_STOP",
+        "label": "Vibe Stop Hour",
+        "defaultValue": "00:00",
+        "description": "Vibrate between these hours",
+        "attributes": {
+          "type": "time"
+        }
+      }
+    ]
+  },
+  {  
+    "type": "section",
+    "items": [
+      {
+        "type": "heading",
         "defaultValue": "Update Times"
       },
       {
@@ -111,6 +164,22 @@ module.exports = [
         "messageKey": "WEATHER_APIKEY",
         "label": "Weather Underground API Key",
         "description": "Configure your Weather Underground API key.<br/> Get yours <a href='https://www.wunderground.com/weather/api/'>here</a>.<br/><br/> Leave blank to use OpenWeatherMap."
+      },
+      {
+        "type": "radiogroup",
+        "messageKey": "WEATHER_UNIT",
+        "label": "Weather Unit",
+        "defaultValue": "C",
+        "options": [
+          { 
+            "label": "Celsius", 
+            "value": "C" 
+          },
+          { 
+            "label": "Fahrenheit", 
+            "value": "F" 
+          }
+    ]
       }
     ]
   },

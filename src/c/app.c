@@ -1,4 +1,6 @@
 #include "src/c/app.h"
+#include <string.h>
+//https://github.com/bhdouglass/simply-light
 
 //Layer definitions
 static Window *s_main_window;
@@ -12,6 +14,9 @@ static TextLayer *s_date_layer;
 static GRect s_temp_grect_2lines;
 static GRect s_temp_grect_1line;
 static TextLayer *s_temp_layer;
+static GRect s_unit_grect_2lines;
+static GRect s_unit_grect_1line;
+static TextLayer *s_unit_layer;
 static TextLayer *s_hum_layer;
 static TextLayer *s_wind_layer;
 static GRect s_cond_grect_2lines;
@@ -58,10 +63,14 @@ bool first_time = true;
 int cur_size = 0;
 
 static char apikey[32];
+static char *wUnit;
 static GColor clock_bgcolor;
 static GColor clock_color;
 static int updweather;
 static int updsteps;
+static char hourlyVibrate;
+static int hvStart;
+static int hvStop;
 
 static void bgtime_update_proc(Layer *layer, GContext *ctx) {
   GRect layer_bounds = layer_get_bounds(layer);
@@ -119,11 +128,21 @@ static void loadconfig(){
   
   updweather = 15;
   updsteps = 5;
+  hourlyVibrate = 'S';
+  hvStart = 8;
+  hvStop = 24;
+  wUnit = "C";
   
   if(persist_exists(CONFIG_WEATHER_APIKEY)){
     persist_read_string(CONFIG_WEATHER_APIKEY, apikey, sizeof(apikey));
     
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Load APIKey: %s", apikey);
+  }
+
+  if(persist_exists(CONFIG_WEATHER_UNIT)){
+    persist_read_string(CONFIG_WEATHER_UNIT, wUnit, sizeof(wUnit));
+    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load WUnit: %s", wUnit);
   }
   
   if(persist_exists(CONFIG_CLOCK_COLOR)){
@@ -150,6 +169,24 @@ static void loadconfig(){
     updsteps = persist_read_int(CONFIG_TIMES_UPDSTEPS);
     
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Load UpdSteps: %d", updsteps);
+  }  
+  
+  if(persist_exists(CONFIG_HOURLY_VIBRATE)){
+    persist_read_string(CONFIG_HOURLY_VIBRATE, &hourlyVibrate, 1);
+    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load APIKey: %c", hourlyVibrate);
+  }
+  
+  if(persist_exists(CONFIG_HOURLY_VIBRATE_START)){
+    hvStart = persist_read_int(CONFIG_HOURLY_VIBRATE_START);
+    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load VibeStart: %d", hvStart);
+  }  
+  
+  if(persist_exists(CONFIG_HOURLY_VIBRATE_STOP)){
+    hvStop = persist_read_int(CONFIG_HOURLY_VIBRATE_STOP);
+    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load VibeStop: %d", hvStop);
   }  
 }
 
@@ -200,22 +237,25 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     if(cur_size != text_size.h){
       cur_size = text_size.h;
 
-      PropertyAnimation *prop_anim_temp = NULL, *prop_anim_cond = NULL, *prop_anim_wlogo = NULL;
+      PropertyAnimation *prop_anim_temp = NULL, *prop_anim_unit = NULL, *prop_anim_cond = NULL, *prop_anim_wlogo = NULL;
 
       if(text_size.h <= 18){
         if(!first_time){
           prop_anim_temp = property_animation_create_layer_frame(text_layer_get_layer(s_temp_layer), &s_temp_grect_2lines, &s_temp_grect_1line);
+          prop_anim_unit = property_animation_create_layer_frame(text_layer_get_layer(s_unit_layer), &s_unit_grect_2lines, &s_unit_grect_1line);
           prop_anim_cond = property_animation_create_layer_frame(text_layer_get_layer(s_cond_layer), &s_cond_grect_2lines, &s_cond_grect_1line);          
           prop_anim_wlogo = property_animation_create_layer_frame(bitmap_layer_get_layer(s_bitmap_wlogo_layer), &s_wlogo_grect_2lines, &s_wlogo_grect_1line);          
         }
       }else{          
         prop_anim_temp = property_animation_create_layer_frame(text_layer_get_layer(s_temp_layer), &s_temp_grect_1line, &s_temp_grect_2lines);
+        prop_anim_unit = property_animation_create_layer_frame(text_layer_get_layer(s_unit_layer), &s_unit_grect_1line, &s_unit_grect_2lines);
         prop_anim_cond = property_animation_create_layer_frame(text_layer_get_layer(s_cond_layer), &s_cond_grect_1line, &s_cond_grect_2lines);
         prop_anim_wlogo = property_animation_create_layer_frame(bitmap_layer_get_layer(s_bitmap_wlogo_layer), &s_wlogo_grect_1line, &s_wlogo_grect_2lines);
       }
 
       if(prop_anim_temp && prop_anim_cond && prop_anim_wlogo){
         anim_easeout(prop_anim_temp);
+        anim_easeout(prop_anim_unit);
         anim_easeout(prop_anim_cond);
         anim_easeout(prop_anim_wlogo);
       }
@@ -270,10 +310,20 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "APIKEY: %s", api_tuple->value->cstring);
     persist_write_string(CONFIG_WEATHER_APIKEY, api_tuple->value->cstring);
     
-    loadconfig();
+    strcpy(apikey, api_tuple->value->cstring);
     
     request_weather();
-  }  
+  }
+  
+  Tuple *unit_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_UNIT);
+  if(unit_tuple){
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "UNIT: %s", unit_tuple->value->cstring);
+    persist_write_string(CONFIG_WEATHER_UNIT, unit_tuple->value->cstring);
+    
+    strcpy(wUnit, unit_tuple->value->cstring);
+    
+    text_layer_set_text(s_unit_layer, wUnit);
+  }
   
   Tuple *alt_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_ALTITUDE);
   if(alt_tuple){ 
@@ -316,6 +366,42 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     
     updsteps = ups;
   } 
+  
+  Tuple *hvibrate_tuple = dict_find(iter, MESSAGE_KEY_HOURLY_VIBRATE);
+  if(hvibrate_tuple){
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "HOURLY_VIBRATE: %s", hvibrate_tuple->value->cstring);
+    persist_write_string(CONFIG_HOURLY_VIBRATE, hvibrate_tuple->value->cstring);
+    
+    hourlyVibrate = hvibrate_tuple->value->cstring[0];
+  } 
+  
+  Tuple *hvsStart_tuple = dict_find(iter, MESSAGE_KEY_HOURLY_VIBRATE_START);
+  if(hvsStart_tuple){
+    char *strStart = "00";
+        
+    snprintf(strStart, sizeof(char*[8]), "%c%c", hvsStart_tuple->value->cstring[0], hvsStart_tuple->value->cstring[1]);
+        
+    int hStart = atoi(strStart);
+
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "HOURLY_VIBRATE_START: %d", hStart);
+    persist_write_int(CONFIG_HOURLY_VIBRATE_START, hStart);
+
+    hvStart = hStart;
+  }
+  
+  Tuple *hvsStop_tuple = dict_find(iter, MESSAGE_KEY_HOURLY_VIBRATE_STOP);
+  if(hvsStop_tuple){
+    char *strStop = "00";
+        
+    snprintf(strStop, sizeof(char*[8]), "%c%c", hvsStop_tuple->value->cstring[0], hvsStop_tuple->value->cstring[1]);
+        
+    int hStop = atoi(strStop) + 24;
+
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "HOURLY_VIBRATE_STOP: %d", hStop);
+    persist_write_int(CONFIG_HOURLY_VIBRATE_STOP, hStop);
+
+    hvStop = hStop;
+  }
   
   Tuple *jsready_tuple = dict_find(iter, MESSAGE_KEY_JS_READY);
   if(jsready_tuple){
@@ -360,9 +446,14 @@ static void handle_minute_tick(struct tm* tick_time, TimeUnits units_changed) {
   // Needs to be static because it's used by the system later.
   static char s_time_text[] = "00:00";
   static char s_date_text[] = "24 September";
-  static char s_finaldate_text[] = "Sun, 24 September";                                         
-                                         
-  strftime(s_time_text, sizeof(s_time_text), "%I:%M", tick_time);
+  static char s_finaldate_text[] = "Sat, 24 September";          
+  
+  if(clock_is_24h_style()){
+    strftime(s_time_text, sizeof(s_time_text), "%H:%M", tick_time);
+  }else{
+    strftime(s_time_text, sizeof(s_time_text), "%I:%M", tick_time);
+  }
+  
   strftime(s_date_text, sizeof(char*[32]), "%d %B", tick_time);
   
   snprintf(s_finaldate_text, sizeof(char*[32]), "%s, %s", weekday[tick_time->tm_wday], s_date_text);
@@ -379,14 +470,32 @@ static void handle_minute_tick(struct tm* tick_time, TimeUnits units_changed) {
   }
   
   if(tick_time->tm_min == 0) {
-    HealthActivityMask activities = health_service_peek_current_activities();
+    bool vibe = 0;
+    
+    if(hourlyVibrate == 'A'){
+      vibe = 1;
+    }
+    
+    if(hourlyVibrate == 'S'){
+      HealthActivityMask activities = health_service_peek_current_activities();
 
-    if(!(activities & HealthActivitySleep)) {
+      if(!(activities & HealthActivitySleep)) {
+        vibe = 1;
+      }    
+    }
+    
+    if(hourlyVibrate == 'U'){
+      if(tick_time->tm_hour >= hvStart && (tick_time->tm_hour + 24) < hvStop){
+        vibe = 1;
+      }
+    }
+
+    if(vibe) {
       VibePattern pat = {
         .durations = vibe_hour,
         .num_segments = ARRAY_LENGTH(vibe_hour),
       };
-  
+
       vibes_enqueue_custom_pattern(pat);
     }
   }
@@ -483,7 +592,17 @@ static void main_window_load(Window *window) {
   text_layer_set_background_color(s_temp_layer, GColorClear);
   text_layer_set_font(s_temp_layer, fonts_get_system_font(FONT_KEY_LECO_42_NUMBERS));
   text_layer_set_text_alignment(s_temp_layer, GTextAlignmentCenter);
-  text_layer_set_text(s_temp_layer, "0.0");
+  text_layer_set_text(s_temp_layer, "00");
+  
+  s_unit_grect_1line = GRect(74, 112, 16, 16);
+  s_unit_grect_2lines = GRect(74, 96, 16, 16);
+  
+  s_unit_layer = text_layer_create(s_unit_grect_1line);
+  text_layer_set_text_color(s_unit_layer, GColorWhite);
+  text_layer_set_background_color(s_unit_layer, GColorClear);
+  text_layer_set_font(s_unit_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
+  text_layer_set_text_alignment(s_unit_layer, GTextAlignmentLeft);
+  text_layer_set_text(s_unit_layer, wUnit);
   
   //s_cond_grect = GRect(0, bounds.size.h - 40, bounds.size.w - 50, 44);
   s_cond_grect_1line = GRect(0, 144, 94, 44);
@@ -580,6 +699,7 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_date_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_temp_layer));
+  layer_add_child(window_layer, text_layer_get_layer(s_unit_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_cond_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_hum_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_sunset_layer));
@@ -614,6 +734,7 @@ static void main_window_unload(Window *window) {
   text_layer_destroy(s_time_layer);
   text_layer_destroy(s_date_layer);
   text_layer_destroy(s_temp_layer);
+  text_layer_destroy(s_unit_layer);
   text_layer_destroy(s_cond_layer);
   text_layer_destroy(s_hum_layer);
   text_layer_destroy(s_wind_layer);

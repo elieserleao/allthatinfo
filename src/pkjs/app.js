@@ -1,6 +1,8 @@
 var Clay = require('pebble-clay');
 var clayConfig = require('./config');
 var clay = new Clay(clayConfig);
+var settings = {};
+var weatherUnit = "C";
 
 //require = ('./weather');
 
@@ -20,8 +22,9 @@ Pebble.addEventListener('appmessage', function (e) {
   var dict = e.payload;
   
 //  if (dict['WEATHER_REQUEST']){
-    wunderKey = dict['WEATHER_REQUEST'];
+//    wunderKey = dict['WEATHER_REQUEST'];
 //  }
+  load_settings();
 
   navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
   
@@ -36,6 +39,8 @@ Pebble.addEventListener('ready', function (e) {
   Pebble.sendAppMessage({
     'JS_READY': '1',    
   });
+  
+  load_settings();
 });
 
 Pebble.addEventListener('webviewclosed', function (e) {
@@ -43,6 +48,15 @@ Pebble.addEventListener('webviewclosed', function (e) {
   console.log(e.type);
   console.log(e.response);
 });
+
+function load_settings(){
+  settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
+  
+  wunderKey = settings.WEATHER_APIKEY;
+  weatherUnit = settings.WEATHER_UNIT;
+  
+  console.log("Settings: " + JSON.stringify(settings));
+}
 
 function request_weather_wunder(latitude, longitude){
   var req = new XMLHttpRequest();
@@ -62,7 +76,7 @@ function request_weather_wunder(latitude, longitude){
             Pebble.sendAppMessage({
               'WEATHER_REPLY': '1',                  
               'WEATHER_WU': 1,
-              'WEATHER_TEMP': "0.0",
+              'WEATHER_TEMP': "00",
               'WEATHER_SUN': "unavailable",
               'WEATHER_COND': "Not good",
               'WEATHER_HUM': "0%",
@@ -227,6 +241,10 @@ function locationError(err) {
 }
 
 function temp_calc(temp){
+  if(weatherUnit === "F"){
+    temp = (temp * 1.8) + 32;
+  }
+  
   var sp = String(temp).split(".");
   var res = sp[0];
   
