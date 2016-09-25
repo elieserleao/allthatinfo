@@ -62,7 +62,6 @@ static BatteryChargeState *charge_state;
 bool first_time = true;
 int cur_size = 0;
 
-char apikey[32];
 char *wUnit;
 GColor clock_bgcolor;
 GColor clock_color;
@@ -139,20 +138,8 @@ static void loadconfig(){
   hourlyVibrate = "S";
   hvStart = 8;
   hvStop = 24;
-  wUnit = "C";
-  
-  if(persist_exists(CONFIG_WEATHER_APIKEY)){
-    persist_read_string(CONFIG_WEATHER_APIKEY, apikey, sizeof(apikey));
-    
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load APIKey: %s", apikey);
-  }
+  wUnit = "...";
 
-  if(persist_exists(CONFIG_WEATHER_UNIT)){
-    persist_read_string(CONFIG_WEATHER_UNIT, wUnit, sizeof(wUnit));
-    
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load WUnit: %s", wUnit);
-  }
-  
   if(persist_exists(CONFIG_CLOCK_COLOR)){
     uint32_t color = persist_read_int(CONFIG_CLOCK_COLOR);
     clock_color = GColorFromHEX(color);
@@ -165,37 +152,7 @@ static void loadconfig(){
     clock_bgcolor = GColorFromHEX(bgcolor);
     
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Load BGColor: %"PRIu32, bgcolor);
-  }  
-  
-  if(persist_exists(CONFIG_TIMES_UPDWEATHER)){
-    updweather = persist_read_int(CONFIG_TIMES_UPDWEATHER);
-    
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load UpdWeather: %d", updweather);
-  }  
-  
-  if(persist_exists(CONFIG_TIMES_UPDSTEPS)){
-    updsteps = persist_read_int(CONFIG_TIMES_UPDSTEPS);
-    
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load UpdSteps: %d", updsteps);
-  }  
-  
-  if(persist_exists(CONFIG_HOURLY_VIBRATE)){
-    persist_read_string(CONFIG_HOURLY_VIBRATE, hourlyVibrate, sizeof(hourlyVibrate));
-    
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load HourlyVibe: %s", hourlyVibrate);
   }
-  
-  if(persist_exists(CONFIG_HOURLY_VIBRATE_START)){
-    hvStart = persist_read_int(CONFIG_HOURLY_VIBRATE_START);
-    
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load VibeStart: %d", hvStart);
-  }  
-  
-  if(persist_exists(CONFIG_HOURLY_VIBRATE_STOP)){
-    hvStop = persist_read_int(CONFIG_HOURLY_VIBRATE_STOP);
-    
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load VibeStop: %d", hvStop);
-  }  
 }
 
 static void request_weather(void) {
@@ -207,7 +164,7 @@ static void request_weather(void) {
     return;
   }
   
-  dict_write_cstring(iter, MESSAGE_KEY_WEATHER_REQUEST, apikey);
+  dict_write_cstring(iter, MESSAGE_KEY_WEATHER_REQUEST, "");
   
   result = app_message_outbox_send();
   if(result != APP_MSG_OK) {
@@ -335,21 +292,13 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
 
   Tuple *api_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_APIKEY);
   if(api_tuple){
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "APIKEY: %s", api_tuple->value->cstring);
-    persist_write_string(CONFIG_WEATHER_APIKEY, api_tuple->value->cstring);
-    
-    strcpy(apikey, api_tuple->value->cstring);
-    
     request_weather();
   }
   
   Tuple *unit_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_UNIT);
   if(unit_tuple){
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "UNIT: %s", unit_tuple->value->cstring);
-    persist_write_string(CONFIG_WEATHER_UNIT, unit_tuple->value->cstring);
-    
-    strcpy(wUnit, unit_tuple->value->cstring);
-    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "UNIT: %s", unit_tuple->value->cstring);    
+    strcpy(wUnit, unit_tuple->value->cstring);    
     text_layer_set_text(s_unit_layer, wUnit);
   }
   
@@ -375,7 +324,6 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   if(tweather_tuple){
     int upw = atoi(tweather_tuple->value->cstring);
     APP_LOG(APP_LOG_LEVEL_DEBUG, "TIMES_UPDWEATHER: %d", upw);
-    persist_write_int(CONFIG_TIMES_UPDWEATHER, upw);
     
     updweather = upw;
   }
@@ -384,7 +332,6 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   if(tsteps_tuple){
     int ups = atoi(tsteps_tuple->value->cstring);
     APP_LOG(APP_LOG_LEVEL_DEBUG, "TIMES_UPDSTEPS: %d", ups);
-    persist_write_int(CONFIG_TIMES_UPDSTEPS, ups);
     
     updsteps = ups;
   } 
@@ -392,7 +339,6 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   Tuple *hvibrate_tuple = dict_find(iter, MESSAGE_KEY_HOURLY_VIBRATE);
   if(hvibrate_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "HOURLY_VIBRATE: %s", hvibrate_tuple->value->cstring);
-    persist_write_string(CONFIG_HOURLY_VIBRATE, hvibrate_tuple->value->cstring);
     
     strcpy(hourlyVibrate, hvibrate_tuple->value->cstring);
   } 
@@ -406,7 +352,6 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     int hStart = atoi(strStart);
 
     APP_LOG(APP_LOG_LEVEL_DEBUG, "HOURLY_VIBRATE_START: %d", hStart);
-    persist_write_int(CONFIG_HOURLY_VIBRATE_START, hStart);
 
     hvStart = hStart;
   }
@@ -417,10 +362,12 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
         
     snprintf(strStop, sizeof(char*[8]), "%c%c", hvsStop_tuple->value->cstring[0], hvsStop_tuple->value->cstring[1]);
         
-    int hStop = atoi(strStop) + 24;
+    int hStop = atoi(strStop);
+    
+    if(hStop < hvStart)
+      hStop = hStop + 24;
 
     APP_LOG(APP_LOG_LEVEL_DEBUG, "HOURLY_VIBRATE_STOP: %d", hStop);
-    persist_write_int(CONFIG_HOURLY_VIBRATE_STOP, hStop);
 
     hvStop = hStop;
   }
@@ -494,7 +441,6 @@ static void handle_minute_tick(struct tm* tick_time, TimeUnits units_changed) {
   if(tick_time->tm_min == 0) {
     bool vibe = 0;
 
-
     if(strncmp(hourlyVibrate, "A", sizeof(char)) == 0){
       vibe = 1;
     }
@@ -508,12 +454,20 @@ static void handle_minute_tick(struct tm* tick_time, TimeUnits units_changed) {
     }
 
     if(strncmp(hourlyVibrate, "U", sizeof(char)) == 0){  
-      if(tick_time->tm_hour >= hvStart && (tick_time->tm_hour + 24) < hvStop){
+      int tajusted = tick_time->tm_hour + 24;
+      
+      if(tajusted > hvStop){
+        tajusted = tick_time->tm_hour;
+      }        
+      
+      if(tajusted >= hvStart && tajusted < hvStop){
         vibe = 1;
       }
     }
 
     if(vibe) {
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "Hourly vibe!!!");
+      
       VibePattern pat = {
         .durations = vibe_hour,
         .num_segments = ARRAY_LENGTH(vibe_hour),
@@ -580,7 +534,7 @@ static void main_window_load(Window *window) {
   text_layer_set_text_alignment(s_altitude_layer, GTextAlignmentRight);
   text_layer_set_text(s_altitude_layer, "0 m");
   
-  s_time_layer = text_layer_create(GRect(0, 12, bounds.size.w, 42));
+  s_time_layer = text_layer_create(GRect(0, 12, bounds.size.w, 45));
   text_layer_set_text_color(s_time_layer, clock_color);
   text_layer_set_background_color(s_time_layer, GColorClear);
   text_layer_set_font(s_time_layer, fonts_get_system_font(FONT_KEY_LECO_42_NUMBERS));

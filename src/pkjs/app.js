@@ -8,7 +8,7 @@ var weatherUnit = "C";
 
 var openweatherKey = '8ada84b14cf204ec183cc619238bac21';
 //var wunderKey = '968769b570ed2aaa';
-var wunderKey = '';
+//var wunderKey = '';
 
 var cur_altitude = 'N/A';
 
@@ -35,12 +35,18 @@ Pebble.addEventListener('appmessage', function (e) {
 
 Pebble.addEventListener('ready', function (e) {
   console.log('JS ready!' + e.ready);
+  load_settings();
+  
   //window.navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
   Pebble.sendAppMessage({
-    'JS_READY': '1',    
+    'JS_READY': '1',
+    'TIMES_UPDWEATHER': settings.TIMES_UPDWEATHER,
+    'TIMES_UPDSTEPS': settings.TIMES_UPDSTEPS,
+    'HOURLY_VIBRATE': settings.HOURLY_VIBRATE,
+    'HOURLY_VIBRATE_START': settings.HOURLY_VIBRATE_START,
+    'HOURLY_VIBRATE_STOP': settings.HOURLY_VIBRATE_STOP   
   });
   
-  load_settings();
 });
 
 Pebble.addEventListener('webviewclosed', function (e) {
@@ -50,9 +56,9 @@ Pebble.addEventListener('webviewclosed', function (e) {
 });
 
 function load_settings(){
-  settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
+  settings = JSON.parse(localStorage.getItem('clay-settings')) ||
+             JSON.parse('{"CLOCK_BGCOLOR":16777215,"CLOCK_COLOR":0,"HOURLY_VIBRATE":"S","HOURLY_VIBRATE_START":"08:00","HOURLY_VIBRATE_STOP":"00:00","TIMES_UPDWEATHER":"15","TIMES_UPDSTEPS":"5","WEATHER_APIKEY":"","WEATHER_UNIT":"C"}');
   
-  wunderKey = settings.WEATHER_APIKEY;
   weatherUnit = settings.WEATHER_UNIT;
   
   console.log("Settings: " + JSON.stringify(settings));
@@ -65,7 +71,7 @@ function request_weather_wunder(latitude, longitude){
   console.log('Using WUnder API.');
  
   try {
-    req.open('GET', 'http://api.wunderground.com/api/'+ wunderKey + '/conditions/q/' + latitude + ',' + longitude + '.json', true);
+    req.open('GET', 'http://api.wunderground.com/api/'+ settings.WEATHER_APIKEY + '/conditions/q/' + latitude + ',' + longitude + '.json', true);
     req.onload = function () {
       if (req.readyState === 4) {
         if (req.status === 200) {
@@ -73,29 +79,18 @@ function request_weather_wunder(latitude, longitude){
           console.log(JSON.stringify(response));
 
           if (typeof(response.response.error) == "object"){
-            /*Pebble.sendAppMessage({
-              'WEATHER_REPLY': '1',                  
-              'WEATHER_WU': 1,
-              'WEATHER_TEMP': "00",
-              'WEATHER_SUN': "unavailable",
-              'WEATHER_COND': "Not good",
-              'WEATHER_HUM': "0%",
-              'WEATHER_WIND': "0",
-              'WEATHER_CITY': response.response.error.description,
-              'WEATHER_ALTITUDE': cur_altitude + " m"
-            });
-            */
             Pebble.sendAppMessage({
               'WEATHER_REPLY': '1',                  
               'WEATHER_WU': 1,
               'WEATHER_CITY': response.response.error.description,
-              'WEATHER_ALTITUDE': " "
+              'WEATHER_ALTITUDE': " ",
+              'WEATHER_UNIT': "X"
             });
             
             return;
           }
           
-          ast.open('GET', 'http://api.wunderground.com/api/'+ wunderKey + '/astronomy/q/' + latitude + ',' + longitude + '.json', true);
+          ast.open('GET', 'http://api.wunderground.com/api/'+ settings.WEATHER_APIKEY + '/astronomy/q/' + latitude + ',' + longitude + '.json', true);
           ast.onload = function () {
             if (ast.readyState === 4) {
               if (ast.status === 200) {                
@@ -119,7 +114,8 @@ function request_weather_wunder(latitude, longitude){
                   'WEATHER_COND': response.current_observation.weather,
                   'WEATHER_CITY': response.current_observation.display_location.city,
                   'WEATHER_HUM': response.current_observation.relative_humidity,
-                  'WEATHER_WIND': process_wind(response.current_observation.wind_gust_kph / 3.6)
+                  'WEATHER_WIND': process_wind(response.current_observation.wind_gust_kph / 3.6),
+                  'WEATHER_UNIT': weatherUnit
                 });
               } else {   
                 Pebble.sendAppMessage({
@@ -177,7 +173,8 @@ function request_weather_owm(latitude, longitude){
           'WEATHER_COND': response.weather[0].description,
           'WEATHER_CITY': response.name,
           'WEATHER_HUM': response.main.humidity + "%",
-          'WEATHER_WIND': process_wind(response.wind.speed)
+          'WEATHER_WIND': process_wind(response.wind.speed),
+          'WEATHER_UNIT': weatherUnit
         });
       } else {  
         Pebble.sendAppMessage({
@@ -193,19 +190,21 @@ function request_weather_owm(latitude, longitude){
 }
 
 function process_wind(wind){
-  var ws = Math.round(wind).toFixed(1);
+  var ws = parseFloat(wind);
+  if(ws === 0)
+    return "0";
   
   if(ws < 1){
-    return String(ws);
-  }else{
-    return String(Math.round(ws));
+    return String(ws.toFixed(1));
   }
+  
+  return String(Math.round(ws));
 }
 
 function fetchWeather(latitude, longitude) {  
   console.log('lat,lon=' + latitude + ',' + longitude);
   
-  if(!wunderKey) {
+  if(!settings.WEATHER_APIKEY) {
     request_weather_owm(latitude, longitude);
   }else{
     request_weather_wunder(latitude, longitude);
@@ -214,18 +213,18 @@ function fetchWeather(latitude, longitude) {
 
 function locationSuccess(pos) {
   var coordinates = pos.coords;
-  fetchWeather(coordinates.latitude, coordinates.longitude);
-  
-  console.log("POS: " + JSON.stringify(pos));
   
   if(pos.coords.altitude){
     cur_altitude = Math.round(pos.coords.altitude) + " m";
   }
   
   Pebble.sendAppMessage({
-    'WEATHER_REPLY': '1',
     'WEATHER_ALTITUDE': cur_altitude
   });
+  
+  fetchWeather(coordinates.latitude, coordinates.longitude);
+  
+  console.log("POS: " + JSON.stringify(pos));
 }
 
 function locationError(err) {

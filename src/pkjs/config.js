@@ -44,7 +44,7 @@ module.exports = [
         "messageKey": "HOURLY_VIBRATE",
         "defaultValue": "S",
         "label": "Vibe at",
-        "description": "Enable or disable hourly vibrates",
+        "description": "Enable or disable hourly vibrates. Uses Pebble Health to detect sleeping when available.",
         "options": [
           { 
             "label": "Always", 
