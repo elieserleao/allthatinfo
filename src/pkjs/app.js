@@ -73,7 +73,7 @@ function request_weather_wunder(latitude, longitude){
           console.log(JSON.stringify(response));
 
           if (typeof(response.response.error) == "object"){
-            Pebble.sendAppMessage({
+            /*Pebble.sendAppMessage({
               'WEATHER_REPLY': '1',                  
               'WEATHER_WU': 1,
               'WEATHER_TEMP': "00",
@@ -83,6 +83,13 @@ function request_weather_wunder(latitude, longitude){
               'WEATHER_WIND': "0",
               'WEATHER_CITY': response.response.error.description,
               'WEATHER_ALTITUDE': cur_altitude + " m"
+            });
+            */
+            Pebble.sendAppMessage({
+              'WEATHER_REPLY': '1',                  
+              'WEATHER_WU': 1,
+              'WEATHER_CITY': response.response.error.description,
+              'WEATHER_ALTITUDE': " "
             });
             
             return;
@@ -112,12 +119,12 @@ function request_weather_wunder(latitude, longitude){
                   'WEATHER_COND': response.current_observation.weather,
                   'WEATHER_CITY': response.current_observation.display_location.city,
                   'WEATHER_HUM': response.current_observation.relative_humidity,
-                  'WEATHER_WIND': process_wind(response.current_observation.wind_gust_kph / 3.6),
-                  'WEATHER_ALTITUDE': cur_altitude
+                  'WEATHER_WIND': process_wind(response.current_observation.wind_gust_kph / 3.6)
                 });
               } else {   
                 Pebble.sendAppMessage({
                   'WEATHER_REPLY': '1',
+                  'WEATHER_WU': 1,
                   'WEATHER_CITY': 'Error: Api?'
                 });
               }
@@ -128,6 +135,7 @@ function request_weather_wunder(latitude, longitude){
         } else {  
           Pebble.sendAppMessage({
             'WEATHER_REPLY': '1',
+            'WEATHER_WU': 1,
             'WEATHER_CITY': 'Error: No internet?'
           });
         }
@@ -137,6 +145,7 @@ function request_weather_wunder(latitude, longitude){
   }catch(e){
     Pebble.sendAppMessage({
       'WEATHER_REPLY': '1',
+      'WEATHER_WU': 1,
       'WEATHER_CITY': 'Error: ' + e.message
     });
   }
@@ -153,18 +162,7 @@ function request_weather_owm(latitude, longitude){
       if (req.status === 200) {
         var response = JSON.parse(req.responseText);
           console.log(JSON.stringify(response));
-        /*
-        var data = {
-          'temp': Math.round(response.main.temp - 273.15),
-          'temp_min': Math.round(response.main.temp_min - 273.15),
-          'temp_max': Math.round(response.main.temp_max - 273.15),
-          'sunrise': response.sys.sunrise,
-          'sunset': response.sys.sunset,
-          'condition': response.weather[0].description,
-          'city': response.name
-        };
-*/
-        
+
         var sr = new Date(response.sys.sunrise * 1000);
         var srStr = leftpad(sr.getHours(), 2, 0) + ':' + leftpad(sr.getMinutes(), 2, 0);
         
@@ -179,11 +177,14 @@ function request_weather_owm(latitude, longitude){
           'WEATHER_COND': response.weather[0].description,
           'WEATHER_CITY': response.name,
           'WEATHER_HUM': response.main.humidity + "%",
-          'WEATHER_WIND': process_wind(response.wind.speed),
-          'WEATHER_ALTITUDE': cur_altitude
+          'WEATHER_WIND': process_wind(response.wind.speed)
         });
-      } else {
-        console.log('Error');
+      } else {  
+        Pebble.sendAppMessage({
+          'WEATHER_REPLY': '1',
+          'WEATHER_OWM': 1,
+          'WEATHER_CITY': 'Error: Api?'
+        });
       }
     }
   };
@@ -222,6 +223,7 @@ function locationSuccess(pos) {
   }
   
   Pebble.sendAppMessage({
+    'WEATHER_REPLY': '1',
     'WEATHER_ALTITUDE': cur_altitude
   });
 }
@@ -229,15 +231,10 @@ function locationSuccess(pos) {
 function locationError(err) {
   console.warn('location error (' + err.code + '): ' + err.message);
   
- /* 
   Pebble.sendAppMessage({
     'WEATHER_REPLY': '1',
-    'WEATHER_TEMP': '0.0',
-    'WEATHER_SUN': 'unavailable',
-    'WEATHER_COND': 'Not Good',
-    'WEATHER_CITY': 'Somewhere'
+    'WEATHER_CITY': 'Error: Location?'
   });
-  */
 }
 
 function temp_calc(temp){

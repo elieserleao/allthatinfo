@@ -62,15 +62,23 @@ static BatteryChargeState *charge_state;
 bool first_time = true;
 int cur_size = 0;
 
-static char apikey[32];
-static char *wUnit;
-static GColor clock_bgcolor;
-static GColor clock_color;
-static int updweather;
-static int updsteps;
-static char hourlyVibrate;
-static int hvStart;
-static int hvStop;
+char apikey[32];
+char *wUnit;
+GColor clock_bgcolor;
+GColor clock_color;
+int updweather;
+int updsteps;
+char *hourlyVibrate;
+int hvStart;
+int hvStop;
+
+char s_city_text[32];
+char s_altitude_text[16];
+char s_humidity_text[8];
+char s_sunrise_text[16];
+char s_temp_text[2];
+char s_cond_text[32];
+char s_wind_text[8];
 
 static void bgtime_update_proc(Layer *layer, GContext *ctx) {
   GRect layer_bounds = layer_get_bounds(layer);
@@ -128,7 +136,7 @@ static void loadconfig(){
   
   updweather = 15;
   updsteps = 5;
-  hourlyVibrate = 'S';
+  hourlyVibrate = "S";
   hvStart = 8;
   hvStop = 24;
   wUnit = "C";
@@ -172,9 +180,9 @@ static void loadconfig(){
   }  
   
   if(persist_exists(CONFIG_HOURLY_VIBRATE)){
-    persist_read_string(CONFIG_HOURLY_VIBRATE, &hourlyVibrate, 1);
+    persist_read_string(CONFIG_HOURLY_VIBRATE, hourlyVibrate, sizeof(hourlyVibrate));
     
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load APIKey: %c", hourlyVibrate);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Load HourlyVibe: %s", hourlyVibrate);
   }
   
   if(persist_exists(CONFIG_HOURLY_VIBRATE_START)){
@@ -221,73 +229,95 @@ static void anim_easeout(PropertyAnimation *prop_anim){
         animation_schedule(anim);
 }
 
-static void inbox_received_handler(DictionaryIterator *iter, void *context) {
-  //Tuple *reply_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_REPLY);
-  //if(reply_tuple) {
+static void set_weather_labels_text(){
+  
+  text_layer_set_text(s_city_layer, s_city_text);
+  text_layer_set_text(s_altitude_layer, s_altitude_text);
+  text_layer_set_text(s_sunset_layer, s_sunrise_text);
+  text_layer_set_text(s_temp_layer, s_temp_text);
+  text_layer_set_text(s_cond_layer, s_cond_text);
+  text_layer_set_text(s_hum_layer, s_humidity_text);
+  text_layer_set_text(s_wind_layer, s_wind_text);
+  
+  
+  GSize text_size = graphics_text_layout_get_content_size(s_cond_text, 
+                                                          fonts_get_system_font(FONT_KEY_GOTHIC_18), 
+                                                          s_cond_grect_2lines, GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter);
 
+  if(cur_size != text_size.h){
+    cur_size = text_size.h;
+
+    PropertyAnimation *prop_anim_temp = NULL, *prop_anim_unit = NULL, *prop_anim_cond = NULL, *prop_anim_wlogo = NULL;
+
+    if(text_size.h <= 18){
+      if(!first_time){
+        prop_anim_temp = property_animation_create_layer_frame(text_layer_get_layer(s_temp_layer), &s_temp_grect_2lines, &s_temp_grect_1line);
+        prop_anim_unit = property_animation_create_layer_frame(text_layer_get_layer(s_unit_layer), &s_unit_grect_2lines, &s_unit_grect_1line);
+        prop_anim_cond = property_animation_create_layer_frame(text_layer_get_layer(s_cond_layer), &s_cond_grect_2lines, &s_cond_grect_1line);          
+        prop_anim_wlogo = property_animation_create_layer_frame(bitmap_layer_get_layer(s_bitmap_wlogo_layer), &s_wlogo_grect_2lines, &s_wlogo_grect_1line);          
+      }
+    }else{          
+      prop_anim_temp = property_animation_create_layer_frame(text_layer_get_layer(s_temp_layer), &s_temp_grect_1line, &s_temp_grect_2lines);
+      prop_anim_unit = property_animation_create_layer_frame(text_layer_get_layer(s_unit_layer), &s_unit_grect_1line, &s_unit_grect_2lines);
+      prop_anim_cond = property_animation_create_layer_frame(text_layer_get_layer(s_cond_layer), &s_cond_grect_1line, &s_cond_grect_2lines);
+      prop_anim_wlogo = property_animation_create_layer_frame(bitmap_layer_get_layer(s_bitmap_wlogo_layer), &s_wlogo_grect_1line, &s_wlogo_grect_2lines);
+    }
+
+    if(prop_anim_temp && prop_anim_cond && prop_anim_wlogo){
+      anim_easeout(prop_anim_temp);
+      anim_easeout(prop_anim_unit);
+      anim_easeout(prop_anim_cond);
+      anim_easeout(prop_anim_wlogo);
+    }
+
+    first_time = false;
+  }
+
+}
+
+static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   Tuple *cond_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_COND);
   if(cond_tuple){
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "COND: %s", cond_tuple->value->cstring);
-    text_layer_set_text(s_cond_layer, cond_tuple->value->cstring);
-
-    GSize text_size = graphics_text_layout_get_content_size(cond_tuple->value->cstring, 
-                                                            fonts_get_system_font(FONT_KEY_GOTHIC_18), 
-                                                            s_cond_grect_2lines, GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter);
-
-    if(cur_size != text_size.h){
-      cur_size = text_size.h;
-
-      PropertyAnimation *prop_anim_temp = NULL, *prop_anim_unit = NULL, *prop_anim_cond = NULL, *prop_anim_wlogo = NULL;
-
-      if(text_size.h <= 18){
-        if(!first_time){
-          prop_anim_temp = property_animation_create_layer_frame(text_layer_get_layer(s_temp_layer), &s_temp_grect_2lines, &s_temp_grect_1line);
-          prop_anim_unit = property_animation_create_layer_frame(text_layer_get_layer(s_unit_layer), &s_unit_grect_2lines, &s_unit_grect_1line);
-          prop_anim_cond = property_animation_create_layer_frame(text_layer_get_layer(s_cond_layer), &s_cond_grect_2lines, &s_cond_grect_1line);          
-          prop_anim_wlogo = property_animation_create_layer_frame(bitmap_layer_get_layer(s_bitmap_wlogo_layer), &s_wlogo_grect_2lines, &s_wlogo_grect_1line);          
-        }
-      }else{          
-        prop_anim_temp = property_animation_create_layer_frame(text_layer_get_layer(s_temp_layer), &s_temp_grect_1line, &s_temp_grect_2lines);
-        prop_anim_unit = property_animation_create_layer_frame(text_layer_get_layer(s_unit_layer), &s_unit_grect_1line, &s_unit_grect_2lines);
-        prop_anim_cond = property_animation_create_layer_frame(text_layer_get_layer(s_cond_layer), &s_cond_grect_1line, &s_cond_grect_2lines);
-        prop_anim_wlogo = property_animation_create_layer_frame(bitmap_layer_get_layer(s_bitmap_wlogo_layer), &s_wlogo_grect_1line, &s_wlogo_grect_2lines);
-      }
-
-      if(prop_anim_temp && prop_anim_cond && prop_anim_wlogo){
-        anim_easeout(prop_anim_temp);
-        anim_easeout(prop_anim_unit);
-        anim_easeout(prop_anim_cond);
-        anim_easeout(prop_anim_wlogo);
-      }
-
-      first_time = false;
-    }
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "COND: %s", cond_tuple->value->cstring);    
+    strcpy(s_cond_text, cond_tuple->value->cstring);
   }
 
   Tuple *city_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_CITY);
   if(city_tuple){
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "CITY: %s", city_tuple->value->cstring);
-    text_layer_set_text(s_city_layer, city_tuple->value->cstring);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "CITY: %s", city_tuple->value->cstring);        
+    strcpy(s_city_text, city_tuple->value->cstring);
   }
 
   Tuple *sun_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_SUN);
   if(sun_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "SUN: %s", sun_tuple->value->cstring);
-    text_layer_set_text(s_sunset_layer, sun_tuple->value->cstring);
+    strcpy(s_sunrise_text, sun_tuple->value->cstring);
   }
 
   Tuple *hum_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_HUM);
   if(hum_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "HUM: %s", hum_tuple->value->cstring);
-    text_layer_set_text(s_hum_layer, hum_tuple->value->cstring);
+    strcpy(s_humidity_text, hum_tuple->value->cstring);
   }
 
   Tuple *wind_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_WIND);
   if(wind_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "WIND: %s", wind_tuple->value->cstring);
-    text_layer_set_text(s_wind_layer, wind_tuple->value->cstring);
+    strcpy(s_wind_text, wind_tuple->value->cstring);
   }
 
+  Tuple *temp_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_TEMP);
+  if(temp_tuple){
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "TEMP: %s", temp_tuple->value->cstring);
+    strcpy(s_temp_text, temp_tuple->value->cstring);
+  }
+  
+  Tuple *alt_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_ALTITUDE);
+  if(alt_tuple){ 
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "ALTITUDE: %s", alt_tuple->value->cstring);
+    strcpy(s_altitude_text, alt_tuple->value->cstring);
+  }
+  
   Tuple *owm_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_OWM);
   if(owm_tuple){
     bitmap_layer_set_bitmap(s_bitmap_wlogo_layer, s_bitmap_owmlogo);
@@ -297,13 +327,11 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   if(wu_tuple){
     bitmap_layer_set_bitmap(s_bitmap_wlogo_layer, s_bitmap_wulogo);
   }
-  //}
    
-  Tuple *temp_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_TEMP);
-  if(temp_tuple){
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "TEMP: %s", temp_tuple->value->cstring);
-    text_layer_set_text(s_temp_layer, temp_tuple->value->cstring);
-  }
+  Tuple *reply_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_REPLY);
+  if(reply_tuple) {
+    set_weather_labels_text();
+  }  
 
   Tuple *api_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_APIKEY);
   if(api_tuple){
@@ -323,12 +351,6 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     strcpy(wUnit, unit_tuple->value->cstring);
     
     text_layer_set_text(s_unit_layer, wUnit);
-  }
-  
-  Tuple *alt_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_ALTITUDE);
-  if(alt_tuple){ 
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "ALTITUDE: %s", alt_tuple->value->cstring);
-      text_layer_set_text(s_altitude_layer, alt_tuple->value->cstring);
   }
   
   Tuple *clock_tuple = dict_find(iter, MESSAGE_KEY_CLOCK_COLOR);
@@ -372,7 +394,7 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "HOURLY_VIBRATE: %s", hvibrate_tuple->value->cstring);
     persist_write_string(CONFIG_HOURLY_VIBRATE, hvibrate_tuple->value->cstring);
     
-    hourlyVibrate = hvibrate_tuple->value->cstring[0];
+    strcpy(hourlyVibrate, hvibrate_tuple->value->cstring);
   } 
   
   Tuple *hvsStart_tuple = dict_find(iter, MESSAGE_KEY_HOURLY_VIBRATE_START);
@@ -407,7 +429,7 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   if(jsready_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "APP WAKEUP: JS IS READY!");
     request_weather();
-  }  
+  }
 }
 
 static void handle_battery(BatteryChargeState state) {
@@ -471,20 +493,21 @@ static void handle_minute_tick(struct tm* tick_time, TimeUnits units_changed) {
   
   if(tick_time->tm_min == 0) {
     bool vibe = 0;
-    
-    if(hourlyVibrate == 'A'){
+
+
+    if(strncmp(hourlyVibrate, "A", sizeof(char)) == 0){
       vibe = 1;
     }
-    
-    if(hourlyVibrate == 'S'){
+
+    if(strncmp(hourlyVibrate, "S", sizeof(char)) == 0){
       HealthActivityMask activities = health_service_peek_current_activities();
 
       if(!(activities & HealthActivitySleep)) {
         vibe = 1;
       }    
     }
-    
-    if(hourlyVibrate == 'U'){
+
+    if(strncmp(hourlyVibrate, "U", sizeof(char)) == 0){  
       if(tick_time->tm_hour >= hvStart && (tick_time->tm_hour + 24) < hvStop){
         vibe = 1;
       }
