@@ -20,7 +20,6 @@
             "WEATHER_COND",
             "WEATHER_CITY",
             "WEATHER_REQUEST",
-            "WEATHER_REPLY",
             "WEATHER_APIKEY",
             "WEATHER_HUM",
             "WEATHER_WIND",
@@ -30,7 +29,6 @@
             "CLOCK_BGCOLOR",
             "TIMES_UPDWEATHER",
             "TIMES_UPDSTEPS",
-            "JS_READY",
             "WEATHER_ALTITUDE",
             "WEATHER_UNIT",
             "HOURLY_VIBRATE",
@@ -121,5 +119,5 @@
             "watchface": true
         }
     },
-    "version": "1.10.0"
+    "version": "1.11.0"
 }

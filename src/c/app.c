@@ -186,19 +186,10 @@ static void anim_easeout(PropertyAnimation *prop_anim){
         animation_schedule(anim);
 }
 
-static void set_weather_labels_text(){
-  
-  text_layer_set_text(s_city_layer, s_city_text);
-  text_layer_set_text(s_altitude_layer, s_altitude_text);
-  text_layer_set_text(s_sunset_layer, s_sunrise_text);
-  text_layer_set_text(s_temp_layer, s_temp_text);
-  text_layer_set_text(s_cond_layer, s_cond_text);
-  text_layer_set_text(s_hum_layer, s_humidity_text);
-  text_layer_set_text(s_wind_layer, s_wind_text);
-  
-  
+static void handle_conditions(){
+   
   GSize text_size = graphics_text_layout_get_content_size(s_cond_text, 
-                                                          fonts_get_system_font(FONT_KEY_GOTHIC_18), 
+                                                          fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), 
                                                           s_cond_grect_2lines, GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter);
 
   if(cur_size != text_size.h){
@@ -208,12 +199,16 @@ static void set_weather_labels_text(){
 
     if(text_size.h <= 18){
       if(!first_time){
+        text_layer_set_font(s_cond_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+        
         prop_anim_temp = property_animation_create_layer_frame(text_layer_get_layer(s_temp_layer), &s_temp_grect_2lines, &s_temp_grect_1line);
         prop_anim_unit = property_animation_create_layer_frame(text_layer_get_layer(s_unit_layer), &s_unit_grect_2lines, &s_unit_grect_1line);
         prop_anim_cond = property_animation_create_layer_frame(text_layer_get_layer(s_cond_layer), &s_cond_grect_2lines, &s_cond_grect_1line);          
         prop_anim_wlogo = property_animation_create_layer_frame(bitmap_layer_get_layer(s_bitmap_wlogo_layer), &s_wlogo_grect_2lines, &s_wlogo_grect_1line);          
       }
-    }else{          
+    }else{  
+      //text_layer_set_font(s_cond_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+      
       prop_anim_temp = property_animation_create_layer_frame(text_layer_get_layer(s_temp_layer), &s_temp_grect_1line, &s_temp_grect_2lines);
       prop_anim_unit = property_animation_create_layer_frame(text_layer_get_layer(s_unit_layer), &s_unit_grect_1line, &s_unit_grect_2lines);
       prop_anim_cond = property_animation_create_layer_frame(text_layer_get_layer(s_cond_layer), &s_cond_grect_1line, &s_cond_grect_2lines);
@@ -237,42 +232,51 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   if(cond_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "COND: %s", cond_tuple->value->cstring);    
     strcpy(s_cond_text, cond_tuple->value->cstring);
+    text_layer_set_text(s_cond_layer, s_cond_text);
+    
+    handle_conditions();
   }
 
   Tuple *city_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_CITY);
   if(city_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "CITY: %s", city_tuple->value->cstring);        
     strcpy(s_city_text, city_tuple->value->cstring);
+    text_layer_set_text(s_city_layer, s_city_text);
   }
 
   Tuple *sun_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_SUN);
   if(sun_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "SUN: %s", sun_tuple->value->cstring);
     strcpy(s_sunrise_text, sun_tuple->value->cstring);
+    text_layer_set_text(s_sunset_layer, s_sunrise_text);
   }
 
   Tuple *hum_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_HUM);
   if(hum_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "HUM: %s", hum_tuple->value->cstring);
     strcpy(s_humidity_text, hum_tuple->value->cstring);
+    text_layer_set_text(s_hum_layer, s_humidity_text);
   }
 
   Tuple *wind_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_WIND);
   if(wind_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "WIND: %s", wind_tuple->value->cstring);
     strcpy(s_wind_text, wind_tuple->value->cstring);
+    text_layer_set_text(s_wind_layer, s_wind_text);
   }
 
   Tuple *temp_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_TEMP);
   if(temp_tuple){
     APP_LOG(APP_LOG_LEVEL_DEBUG, "TEMP: %s", temp_tuple->value->cstring);
     strcpy(s_temp_text, temp_tuple->value->cstring);
+    text_layer_set_text(s_temp_layer, s_temp_text);
   }
   
   Tuple *alt_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_ALTITUDE);
   if(alt_tuple){ 
     APP_LOG(APP_LOG_LEVEL_DEBUG, "ALTITUDE: %s", alt_tuple->value->cstring);
     strcpy(s_altitude_text, alt_tuple->value->cstring);
+    text_layer_set_text(s_altitude_layer, s_altitude_text);
   }
   
   Tuple *owm_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_OWM);
@@ -284,12 +288,7 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   if(wu_tuple){
     bitmap_layer_set_bitmap(s_bitmap_wlogo_layer, s_bitmap_wulogo);
   }
-   
-  Tuple *reply_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_REPLY);
-  if(reply_tuple) {
-    set_weather_labels_text();
-  }  
-
+  
   Tuple *api_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_APIKEY);
   if(api_tuple){
     request_weather();
@@ -370,12 +369,6 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "HOURLY_VIBRATE_STOP: %d", hStop);
 
     hvStop = hStop;
-  }
-  
-  Tuple *jsready_tuple = dict_find(iter, MESSAGE_KEY_JS_READY);
-  if(jsready_tuple){
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "APP WAKEUP: JS IS READY!");
-    request_weather();
   }
 }
 
