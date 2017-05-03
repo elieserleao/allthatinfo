@@ -4,10 +4,14 @@
 
 //Layer definitions
 static Window *s_main_window;
+static GRect s_main_bounds;
 static Layer *s_bgtime_layer;
 static Layer *s_batt_layer;
 static TextLayer *s_city_layer;
+static GRect s_city_resized_grect;
+static GSize s_city_text_size;
 static TextLayer *s_altitude_layer;
+static GRect s_cur_altitude_rect;
 static TextLayer *s_connection_layer;
 static TextLayer *s_time_layer;
 static TextLayer *s_date_layer;
@@ -173,13 +177,13 @@ static void request_weather(void) {
   }
 }
 
-static void anim_easeout(PropertyAnimation *prop_anim){
+static void anim(PropertyAnimation *prop_anim, int duration_ms, AnimationCurve animCurve){
         Animation *anim = property_animation_get_animation(prop_anim);
         
-        const int delay_ms = 1000;
-        const int duration_ms = 500;
+        const int delay_ms = 500;
+        //const int duration_ms = 500;
         
-        animation_set_curve(anim, AnimationCurveEaseOut);
+        animation_set_curve(anim, animCurve);
         animation_set_delay(anim, delay_ms);
         animation_set_duration(anim, duration_ms);
 
@@ -216,10 +220,10 @@ static void handle_conditions(){
     }
 
     if(prop_anim_temp && prop_anim_cond && prop_anim_wlogo){
-      anim_easeout(prop_anim_temp);
-      anim_easeout(prop_anim_unit);
-      anim_easeout(prop_anim_cond);
-      anim_easeout(prop_anim_wlogo);
+      anim(prop_anim_temp, 500, AnimationCurveEaseOut);
+      anim(prop_anim_unit, 500, AnimationCurveEaseOut);
+      anim(prop_anim_cond, 500, AnimationCurveEaseOut);
+      anim(prop_anim_wlogo, 500, AnimationCurveEaseOut);
     }
 
     first_time = false;
@@ -242,6 +246,17 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "CITY: %s", city_tuple->value->cstring);        
     strcpy(s_city_text, city_tuple->value->cstring);
     text_layer_set_text(s_city_layer, s_city_text);
+  
+    GRect orig_grect = GRect(0, 0, s_main_bounds.size.w * 2, 16);
+
+    s_city_text_size = graphics_text_layout_get_content_size(s_city_text, 
+                                                          fonts_get_system_font(FONT_KEY_GOTHIC_14), 
+                                                          orig_grect, 
+                                                          GTextOverflowModeFill, GTextAlignmentLeft);
+        
+    GRect resized_grect = GRect(0, 0, s_city_text_size.w, 16);
+    
+    layer_set_frame(text_layer_get_layer(s_city_layer), resized_grect);
   }
 
   Tuple *sun_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_SUN);
@@ -273,10 +288,21 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   }
   
   Tuple *alt_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_ALTITUDE);
-  if(alt_tuple){ 
+  if(alt_tuple){     
     APP_LOG(APP_LOG_LEVEL_DEBUG, "ALTITUDE: %s", alt_tuple->value->cstring);
     strcpy(s_altitude_text, alt_tuple->value->cstring);
     text_layer_set_text(s_altitude_layer, s_altitude_text);
+    
+    GRect orig_grect = GRect(0, 0, s_main_bounds.size.w - 16, 16);
+    GSize text_size = graphics_text_layout_get_content_size(s_altitude_text, 
+                                                            fonts_get_system_font(FONT_KEY_GOTHIC_14), 
+                                                            orig_grect, 
+                                                            GTextOverflowModeFill, GTextAlignmentLeft);
+    
+    GRect resized_grect = GRect(s_main_bounds.size.w - 15 - text_size.w, 0, s_main_bounds.size.w - 16, 16);
+    
+    layer_set_frame(text_layer_get_layer(s_altitude_layer), resized_grect);
+    text_layer_set_text_alignment(s_altitude_layer, GTextAlignmentLeft);
   }
   
   Tuple *owm_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_OWM);
@@ -493,9 +519,42 @@ static void handle_bluetooth(bool connected) {
   //text_layer_set_text(s_connection_layer, connected ? "" : "X");
 }
 
+static void anim_city_back(void *context){    
+  GRect orig_grect = GRect(0, 0, s_main_bounds.size.w * 2, 16);
+  
+  PropertyAnimation* prop_anim_orig = property_animation_create_layer_frame(text_layer_get_layer(s_city_layer), &s_city_resized_grect, &orig_grect);
+    
+  anim(prop_anim_orig, 300, AnimationCurveLinear);
+}
+
+static void accel_tap_handler(AccelAxisType axis, int32_t direction) {  
+  GRect orig_grect = GRect(0, 0, s_main_bounds.size.w * 2, 16);
+  GRect alt_pos = layer_get_frame(text_layer_get_layer(s_altitude_layer));
+  
+  if(s_city_text_size.w > alt_pos.origin.x){
+    int diff = alt_pos.origin.x - s_city_text_size.w;
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Diff:  %d", diff);
+    
+    s_city_resized_grect = GRect(diff - 5, 0, s_main_bounds.size.w * 2, 16);
+  
+    PropertyAnimation* prop_anim_alt = property_animation_create_layer_frame(text_layer_get_layer(s_city_layer), &orig_grect, &s_city_resized_grect);
+    
+    int duration = (-1) * diff * 40;
+    
+    if(duration > 3000){
+      duration = 3000;
+    }
+    
+    anim(prop_anim_alt, duration, AnimationCurveLinear);
+    
+    app_timer_register(duration + 1000, anim_city_back, NULL);
+  }
+}
+
 static void main_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
-  GRect bounds = layer_get_frame(window_layer);
+  s_main_bounds = layer_get_frame(window_layer);
+  GRect bounds = s_main_bounds;
   int padding = 0;
 
   s_bgtime_layer = layer_create(bounds);
@@ -504,7 +563,7 @@ static void main_window_load(Window *window) {
   s_batt_layer = layer_create(bounds);
   layer_set_update_proc(s_batt_layer, sbatt_update_proc);  
   
-  s_city_layer = text_layer_create(GRect(0, 0, bounds.size.w, 16));
+  s_city_layer = text_layer_create(GRect(0, 0, bounds.size.w * 2, 16));
   text_layer_set_text_color(s_city_layer, GColorWhite);
   text_layer_set_background_color(s_city_layer, GColorClear);
   text_layer_set_font(s_city_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
@@ -520,9 +579,10 @@ static void main_window_load(Window *window) {
   s_bitmap_mountain_layer = bitmap_layer_create(GRect(bounds.size.w - 13, 6, 15, 8));
   bitmap_layer_set_bitmap(s_bitmap_mountain_layer, s_bitmap_mountain);
   
-  s_altitude_layer = text_layer_create(GRect(0, 0, bounds.size.w - 16, 16));
+  s_cur_altitude_rect = GRect(90, 0, bounds.size.w - 106, 16);
+  s_altitude_layer = text_layer_create(s_cur_altitude_rect);
   text_layer_set_text_color(s_altitude_layer, GColorWhite);
-  text_layer_set_background_color(s_altitude_layer, GColorClear);
+  text_layer_set_background_color(s_altitude_layer, GColorBlack);
   text_layer_set_font(s_altitude_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
   text_layer_set_text_alignment(s_altitude_layer, GTextAlignmentRight);
   text_layer_set_text(s_altitude_layer, "0 m");
@@ -663,9 +723,9 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, s_batt_layer);
   
   layer_add_child(window_layer, text_layer_get_layer(s_city_layer));
+  layer_add_child(window_layer, text_layer_get_layer(s_altitude_layer));
   layer_add_child(window_layer, bitmap_layer_get_layer(s_bitmap_mountain_layer));
   layer_add_child(window_layer, bitmap_layer_get_layer(s_bitmap_noblt_layer));
-  layer_add_child(window_layer, text_layer_get_layer(s_altitude_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_date_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_temp_layer));
@@ -689,9 +749,12 @@ static void main_window_load(Window *window) {
   connection_service_subscribe((ConnectionHandlers) {
     .pebble_app_connection_handler = handle_bluetooth
   });
+  
+  accel_tap_service_subscribe(accel_tap_handler);
 }
 
 static void main_window_unload(Window *window) {
+  accel_tap_service_unsubscribe();
   tick_timer_service_unsubscribe();
   battery_state_service_unsubscribe();
   connection_service_unsubscribe();

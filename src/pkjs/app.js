@@ -11,6 +11,7 @@ var openweatherKey = '8ada84b14cf204ec183cc619238bac21';
 //var wunderKey = '';
 
 var cur_altitude = 'N/A';
+//var cur_altitude = '12345 m';
 
 var locationOptions = {
   enableHighAccuracy: true,
@@ -179,8 +180,7 @@ function request_weather_owm(latitude, longitude){
           'WEATHER_OWM': 1,
           'WEATHER_TEMP': temp_calc(parseFloat(response.main.temp - 273.15).toFixed(1)),
           'WEATHER_SUN': srStr + "-" + ssStr,
-          //'WEATHER_COND': response.weather[0].description,
-          'WEATHER_COND': 'Scattered clouds',
+          'WEATHER_COND': response.weather[0].description,
           'WEATHER_CITY': response.name,
           'WEATHER_HUM': response.main.humidity + "%",
           'WEATHER_WIND': process_wind(response.wind.speed),
@@ -228,7 +228,7 @@ function locationSuccess(pos) {
   }
   
   Pebble.sendAppMessage({
-    'WEATHER_ALTITUDE': cur_altitude
+    'WEATHER_ALTITUDE': " " + cur_altitude
   });
   
   fetchWeather(coordinates.latitude, coordinates.longitude);
